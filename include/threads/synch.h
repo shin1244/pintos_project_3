@@ -1,6 +1,12 @@
 #ifndef THREADS_SYNCH_H
 #define THREADS_SYNCH_H
 
+// ********************************************** //
+// [MOD; DONATION PRIORITY IMPL]
+// DESCRIPTION in gitbook it gives 8 as example, so it is set to 8
+#define MAX_DEPTH 8
+// ********************************************** //
+
 #include <list.h>
 #include <stdbool.h>
 
@@ -37,6 +43,11 @@ void cond_init (struct condition *);
 void cond_wait (struct condition *, struct lock *);
 void cond_signal (struct condition *, struct lock *);
 void cond_broadcast (struct condition *, struct lock *);
+
+// ********************************************** //
+// [MOD; SEMAPHORE PRIORITY IMPL]
+bool sema_insert_priority_helper(const struct list_elem *curr_elem, const struct list_elem *cmp_elem, void *aux);
+// ********************************************** //
 
 /* Optimization barrier.
  *

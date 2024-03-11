@@ -91,10 +91,18 @@ timer_elapsed (int64_t then) {
 void
 timer_sleep (int64_t ticks) {
 	int64_t start = timer_ticks ();
+	ASSERT (intr_get_level () == INTR_ON);	
 
-	ASSERT (intr_get_level () == INTR_ON);
-	while (timer_elapsed (start) < ticks)
-		thread_yield ();
+	// ********************************************** //
+	// [MOD; SLEEP-WAIT IMPL]
+	// DESCRIPTION call thread_sleep if timer_sleep is called in order to
+	// put the current thread to BLOCK state and update sleep list
+	thread_sleep(start + ticks);
+	// ********************************************** //
+	
+	// [LEGACY] BUSY-WAIT POLICY
+	// while (timer_elapsed (start) < ticks)
+	// 	thread_yield ();
 }
 
 /* Suspends execution for approximately MS milliseconds. */
@@ -120,12 +128,40 @@ void
 timer_print_stats (void) {
 	printf ("Timer: %"PRId64" ticks\n", timer_ticks ());
 }
+
 
 /* Timer interrupt handler. */
 static void
 timer_interrupt (struct intr_frame *args UNUSED) {
-	ticks++;
+	ticks++; // updates global tick
 	thread_tick ();
+
+	// ********************************************** //
+	// [MOD; MLFQS IMPL]
+	// DESCRIPTION every tick, 4 ticks, 1 seconds mlfqs must
+	// update values accordingly (see gitbook for clarification)
+	if(thread_mlfqs) {
+		if(ticks % TIMER_FREQ == 0) {
+			thread_mlfqs_calculate_load_avg();
+			thread_mlfqs_calculate_recent_cpu();
+		}
+
+		if(ticks % 4 == 0)
+			thread_mlfqs_calculate_priority();
+		
+		thread_mlfqs_increment_recent_cpu();
+	} else {
+		// [MOD; PREEMPTION PRIORITY IMPL]
+		// DESCRIPTION check the current running thread priority and ready list
+		// thread priority and swap if necessary
+		thread_preemption_priority();
+		// ********************************************** //
+	}
+	// [MOD; SLEEP-WAIT IMPL]
+	// DESCRIPTION call thread_awake every interrupt to check any thread
+	// that needs to be woken
+	thread_awake(ticks);
+	// ********************************************** //
 }
 
 /* Returns true if LOOPS iterations waits for more than one timer
