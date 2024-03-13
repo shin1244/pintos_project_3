@@ -113,6 +113,8 @@ struct thread {
 	int nice;
 	int recent_cpu;
 	struct list_elem all_elem;
+
+	//[mode; syscall]
 	// ********************************************** //
 
 	/* Shared between thread.c and synch.c. */

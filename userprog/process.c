@@ -45,10 +45,15 @@ process_create_initd (const char *file_name) {
 
 	/* Make a copy of FILE_NAME.
 	 * Otherwise there's a race between the caller and load(). */
-	fn_copy = palloc_get_page (0);
+	fn_copy = palloc_get_page (0);           
 	if (fn_copy == NULL)
 		return TID_ERROR;
 	strlcpy (fn_copy, file_name, PGSIZE);
+
+	//인자들을 파싱하고
+	char *save_ptr;
+	strtok_r(file_name, "", &save_ptr);
+	//파싱한 인자들을 thread_create 함수의 첫 인자로 들어가야한다. 
 
 	/* Create a new thread to execute FILE_NAME. */
 	tid = thread_create (file_name, PRI_DEFAULT, initd, fn_copy);
@@ -176,8 +181,24 @@ process_exec (void *f_name) {
 	/* We first kill the current context */
 	process_cleanup ();
 
+	//파싱
+	char *parse[64];
+    char *token, *save_ptr;
+    int count = 0;
+    for (token = strtok_r(file_name, " ", &save_ptr); token != NULL; token = strtok_r(NULL, " ", &save_ptr))
+       {
+	    parse[count++] = token;
+	   }
 	/* And then load the binary */
 	success = load (file_name, &_if);
+
+	argument_stack(parse, count, &_if.rsp);
+
+	_if.R.rdi = count;
+	_if.R.rsi = (char*)_if.rsp + 8;
+
+	hex_dump(_if.rsp, _if.rsp, USER_STACK-(uint64_t)_if.rsp, true);
+
 
 	/* If load failed, quit. */
 	palloc_free_page (file_name);
@@ -189,7 +210,37 @@ process_exec (void *f_name) {
 	NOT_REACHED ();
 }
 
+//인자 스택
+void argument_stack(char **parse, int count, void **rsp) 
+{
+	for(int i = count-1; i > -1; i--)
+	{
+		for(int j = strlen(parse[i]); j > -1; j--)
+		{
+			(*rsp)--;
+			**(char**)rsp = parse[i][j];
+		}
+		parse[i] = *(char**)rsp;
+	}
+	int padding = (int)*rsp%8;
+	for(int i = 0; i < padding; i++)
+	{
+		(*rsp)--;
+		**(uint8_t**)rsp = 0;
+	}
+	
+	(*rsp) -= 8;
+	**(char***)rsp = 0;
 
+	for(int i = count-1; i > -1; i--)
+	{
+		(*rsp) -= 8;
+		**(char ***)rsp = parse[i];
+	}
+
+	(*rsp) -= 8;
+	**(char***)rsp = 0;
+}
 /* Waits for thread TID to die and returns its exit status.  If
  * it was terminated by the kernel (i.e. killed due to an
  * exception), returns -1.  If TID is invalid or if it was not a
@@ -204,6 +255,12 @@ process_wait (tid_t child_tid UNUSED) {
 	/* XXX: Hint) The pintos exit if process_wait (initd), we recommend you
 	 * XXX:       to add infinite loop here before
 	 * XXX:       implementing the process_wait. */
+	for (int i = 0; i < 100000000; i++)
+	{
+		/* code */
+	}
+	
+	
 	return -1;
 }
 
