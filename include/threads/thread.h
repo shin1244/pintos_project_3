@@ -37,6 +37,14 @@ typedef int tid_t;
 #define LOAD_AVG_DEFAULT	0
 // ********************************************** //
 
+//**//
+//file disripter
+#define FDT_PAGES 2
+#define FDT_COUNT_LIMIT 128
+
+//**//
+
+
 /* A kernel thread or user process.
  *
  * Each thread structure is stored in its own 4 kB page.  The
@@ -116,6 +124,8 @@ struct thread {
 
 	//[mode; syscall]
 	// ********************************************** //
+	struct file**fdt;
+	int next_fd;
 
 	/* Shared between thread.c and synch.c. */
 	struct list_elem elem;              /* List element. */

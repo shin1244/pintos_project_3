@@ -97,10 +97,12 @@ duplicate_pte (uint64_t *pte, void *va, void *aux) {
 	bool writable;
 
 	/* 1. TODO: If the parent_page is kernel page, then return immediately. */
-
+	if(is_kernel_vaddr(va))
+		return true;
 	/* 2. Resolve VA from the parent's page map level 4. */
 	parent_page = pml4_get_page (parent->pml4, va);
-
+	if(parent_page == NULL)
+		return false;
 	/* 3. TODO: Allocate new PAL_USER page for the child and set result to
 	 *    TODO: NEWPAGE. */
 
@@ -112,6 +114,8 @@ duplicate_pte (uint64_t *pte, void *va, void *aux) {
 	 *    permission. */
 	if (!pml4_set_page (current->pml4, va, newpage, writable)) {
 		/* 6. TODO: if fail to insert page, do error handling. */
+		if(parent_page != )
+			return false;
 	}
 	return true;
 }
@@ -182,7 +186,7 @@ process_exec (void *f_name) {
 	process_cleanup ();
 
 	//파싱
-	char *parse[64];
+	char *parse[128];
     char *token, *save_ptr;
     int count = 0;
     for (token = strtok_r(file_name, " ", &save_ptr); token != NULL; token = strtok_r(NULL, " ", &save_ptr))
@@ -241,6 +245,55 @@ void argument_stack(char **parse, int count, void **rsp)
 	(*rsp) -= 8;
 	**(char***)rsp = 0;
 }
+
+/*현재 스레드에 파일을 추가하고
+스레드에 저장된 next_fd(init에 추가한거)를 탐색하고 최대전까지 탐색하고
+할당 성공시 fd 실패시 -1리턴*/
+int process_add_file(struct file *f)
+{
+	struct thread*curr = thread_current();
+	struct file**fdt = curr->fdt;
+
+	//탐색을 계속해서 시작
+	while(curr->next_fd<FDT_COUNT_LIMIT&&fdt[curr->next_fd])
+	{
+		curr->next_fd++;
+		if(curr->next_fd >= FDT_COUNT_LIMIT)
+			return -1;
+		fdt[curr->next_fd] = f;
+
+		return curr->next_fd;
+	}	
+}
+
+
+//디스크립터 내에서 검색할 수 있게 해주는 함수
+struct file*process_get_file(int fd)
+{
+	struct thread*curr = thread_current();
+	struct file**fdt = curr->fdt;
+	//fd 디폴트가 2이고 떄문에 그것보다 작거나 리미트 값 이상이 될 시에 
+	//NULL을 리턴해야한다. 
+	if(fd < 2 || fd >= FDT_COUNT_LIMIT)
+	{
+		return NULL;
+	}
+	return fdt[fd];
+
+}
+
+//디스크립터 내에서 close할때 필요한 함수도 만들어주기
+struct file*process_close(int fd)
+{
+	struct thread*curr = thread_current();
+	struct file**fdt = curr->fdt;
+	if(fd < 2 || fd >= FDT_COUNT_LIMIT)
+	{
+		return NULL;
+	}
+	fdt[fd] = NULL
+}
+
 /* Waits for thread TID to die and returns its exit status.  If
  * it was terminated by the kernel (i.e. killed due to an
  * exception), returns -1.  If TID is invalid or if it was not a

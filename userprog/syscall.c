@@ -68,29 +68,66 @@ int exec(const char*cmd_line)
 	char *cmd_line_copy;
 	cmd_line_copy = palloc_get_page(0);
 	if(cmd_line_copy == NULL)
-	 	exit(-1);
+	{
+		exit(-1);
+	}
 	strlcpy(cmd_line_copy, cmd_line, PGSIZE);
+
+	if(process_exec(cmd_line_copy) == -1)
+	{
+		exit(-1);
+	}
 }
 
-
+void halt(void)
+{
+	power_off();
+}
 
 /* The main system call interface */
 void
 syscall_handler (struct intr_frame *f UNUSED) {
 	// TODO: Your implementation goes here.
+	/*
+	1번인자 rdi
+	2번인자 rsi
+	3번인자 rdx
+	4번인자 r10
+	5번인자 r8
+	6번인자 r9
+	*/
 	switch (f->R.rax)
 	{
-	case SYS_EXEC:
-		f->R.rax = exec(f->R.rdi);
-		break;
-
-	case SYS_OPEN:
-		f->R.rax = open(f->R.rdi);
-		break;
-	
-	default:
-		break;
+	case SYS_HALT:
+		case SYS_EXIT:
+			exit(f->R.rdi);
+		case SYS_FORK:
+			fork(f->R.rdi);		
+		case SYS_EXEC:
+			exec(f->R.rdi);
+		case SYS_WAIT:
+			wait(f->R.rdi);
+		case SYS_CREATE:
+			create(f->R.rdi, f->R.rsi);		
+		case SYS_REMOVE:
+			remove(f->R.rdi);		
+		case SYS_OPEN:
+			open(f->R.rdi);		
+		case SYS_FILESIZE:
+			filesize(f->R.rdi);
+		case SYS_READ:
+			read(f->R.rdi, f->R.rsi, f->R.rdx);
+		case SYS_WRITE:
+			write(f->R.rdi, f->R.rsi, f->R.rdx);		
+		case SYS_SEEK:
+			seek(f->R.rdi, f->R.rsi);		
+		case SYS_TELL:
+			tell(f->R.rdi);		
+		case SYS_CLOSE:
+			close(f->R.rdi);
 	}
+
+
 	printf ("system call!\n");
 	thread_exit ();
 }

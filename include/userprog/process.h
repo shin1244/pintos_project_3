@@ -12,4 +12,8 @@ void process_activate (struct thread *next);
 
 void argument_stack(char **parse, int count, void **rsp);
 
+//현재 스레드에 fdt 파일을 추가해준다. 
+int process_add_file(struct file *f);
+
+
 #endif /* userprog/process.h */
