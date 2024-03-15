@@ -124,6 +124,7 @@ struct thread {
 
 	//[mode; syscall]
 	// ********************************************** //
+	int exit_status;
 	struct file**fdt;
 	int next_fd;
 
