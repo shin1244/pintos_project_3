@@ -141,11 +141,11 @@ syscall_handler (struct intr_frame *f UNUSED) {
 void check_address(void *addr)
 {
 	if (addr == NULL)
-		{exit(-1);}
+		exit(-1);
 	if(!is_user_vaddr(addr))
-		{exit(-1);}
+		exit(-1);
 	if(pml4_get_page(thread_current()->pml4, addr) == NULL)
-		{exit(-1);}
+		exit(-1);
 }
 
 /*시스템콜 모음zip*/
@@ -182,11 +182,11 @@ int exec(const char *command_line)
 	char *command_line_copy;
 	command_line_copy = palloc_get_page(0);
 	if(command_line_copy ==  NULL)
-		{exit(-1);}
+		exit(-1);
 	strlcpy(command_line_copy, command_line, PGSIZE); //위에 값을 복사값에 복사.
 
 	if(process_exec(command_line_copy) == -1)
-		{exit(-1);}
+		exit(-1);
 }
 
 int wait(int pid)
@@ -214,10 +214,10 @@ int open(const char *file_name)
 	check_address(file_name);
 	struct file *file = filesys_open(file_name);
 	if (file == NULL)
-		{return -1;}
+		return -1;
 	int fd = process_add_file(file);
 	if (fd == -1)
-		{file_close(file);}
+		file_close(file);
 	return fd;
 }
 
@@ -225,7 +225,7 @@ int filesize(int fd)
 {
 	struct file *file = process_get_file(fd);
 	if(file == NULL)
-		{return -1;}
+		return -1;
 	return file_length(file);
 }
 
@@ -259,26 +259,28 @@ int write(int fd, const void *buffer, unsigned size)
 
 void seek(int fd, unsigned position)
 {
-	if(fd>2)
+	if(fd<2)
 		return;
 	struct file *file = process_get_file(fd);
 	if (file == NULL)
-		{return;}
+		return;
 	file_seek(file, position);
 }
 
 unsigned tell(int fd)
 {
-	if(fd>2)
+	if(fd<2)
 		return;
 	struct file *file = process_get_file(fd);
 	if(file == NULL)
-		{return;}
+		return;
 	return file_tell(file);
 }
 
 void close(int fd)
 {
+	if(fd<2)
+		return;
 	struct file *file = process_get_file(fd);
 	if (file == NULL)
 		return;

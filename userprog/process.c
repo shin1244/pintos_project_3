@@ -147,9 +147,7 @@ duplicate_pte (uint64_t *pte, void *va, void *aux) {
 	 *    TODO: NEWPAGE. */
 	newpage = palloc_get_page(PAL_USER|PAL_ZERO);
 	if(newpage == NULL)
-		{
 			return false;
-		}
 	/* 4. TODO: Duplicate parent's page to the new page and
 	 *    TODO: check whether parent's page is writable or not (set WRITABLE
 	 *    TODO: according to the result). */
@@ -157,8 +155,8 @@ duplicate_pte (uint64_t *pte, void *va, void *aux) {
 	writable = is_writable(pte);
 	/* 5. Add new page to child's page table at address VA with WRITABLE
 	 *    permission. */
-	if (!pml4_set_page (current->pml4, va, newpage, writable)) {
-		/* 6. TODO: if fail to insert page, do error handling. */
+	if (!pml4_set_page (current->pml4, va, newpage, writable)) 
+	{	/* 6. TODO: if fail to insert page, do error handling. */
 		
 			return false;
 	}
@@ -260,7 +258,7 @@ process_exec (void *f_name) {
 	process_cleanup ();
 
 	//파싱
-	char *parse[128];
+	char *parse[64];
     char *token, *save_ptr;
     int count = 0;
     for (token = strtok_r(file_name, " ", &save_ptr); token != NULL; token = strtok_r(NULL, " ", &save_ptr))
@@ -270,17 +268,21 @@ process_exec (void *f_name) {
 	/* And then load the binary */
 	success = load (file_name, &_if);
 
+	/* If load failed, quit. */
+	
+	if (!success)
+	{	
+		palloc_free_page (file_name);
+		return -1;
+	}
+
+
 	argument_stack(parse, count, &_if.rsp);
 
 	_if.R.rdi = count;
 	_if.R.rsi = (char*)_if.rsp + 8;
 
-
-
-	/* If load failed, quit. */
-	palloc_free_page (file_name);
-	if (!success)
-		return -1;
+	palloc_free_page(file_name);
 
 	/* Start switched process. */
 	do_iret (&_if);
@@ -384,7 +386,6 @@ process_wait (tid_t child_tid UNUSED) {
 	if(child==NULL)
 		return -1;
 	sema_down(&child->wait_sema);
-	// timer_sleep(10);
 
 	list_remove(&child->child_elem);
 	sema_up(&child->exit_sema);
