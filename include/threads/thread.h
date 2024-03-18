@@ -5,6 +5,7 @@
 #include <list.h>
 #include <stdint.h>
 #include "threads/interrupt.h"
+#include "threads/synch.h"
 #ifdef VM
 #include "vm/vm.h"
 #endif
@@ -39,7 +40,7 @@ typedef int tid_t;
 
 //**//
 //file disripter
-#define FDT_PAGES 2
+// #define FDT_PAGES 2
 #define FDT_COUNT_LIMIT 128
 
 //**//
@@ -140,21 +141,20 @@ struct thread {
 
 	//[MOD; syscall]
 	// ********************************************** //
-	int exit_status;
+	int exit_status; //1을 제외한 나머지는 
 	struct file**fdt;
 	int next_fd;
 
-	struct intr_frame parent_if;
 
+	struct intr_frame parent_if;
 	//자식 list와 elem추가
 	struct list child_list;
 	struct list_elem child_elem;
-	//load_sema 추가 thread가 ready_list에 들어갔고 __do_fork 가 call 되면 load가 되는데 
-	//부모가 대기를 해야한다.
 
-	// struct semaphore load_sema;
-	// struct semaphore exit_sema;
-	// struct semaphore wait_sema;
+
+	struct semaphore load_sema; // 현재 스레드가 load되는 동안 부모가 기다리게 하기 위한 semaphore
+	struct semaphore exit_sema;
+	struct semaphore wait_sema;
 
 	struct file *running; //실행중인 파일을 저장
 

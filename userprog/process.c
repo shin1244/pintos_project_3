@@ -89,18 +89,22 @@ process_fork (const char *name, struct intr_frame *if_ UNUSED) {
 
 	tid_t pid = thread_create(name, PRI_DEFAULT, __do_fork, curr);
 	if(pid == TID_ERROR)
-		{return TID_ERROR;}
+		return TID_ERROR;
 
 	//생성하면서 return된 식별자를 이용해서 자식 스레드 찾기
 	struct thread *child = get_child_process(pid);
 
 	//부모 대기
-	// sema_down (&child->load_sema);
+	sema_down (&child->load_sema);
+
+	if(child->exit_status == -2)
+	{
+		sema_up(&child->exit_sema);
+
+		return TID_ERROR;
+	}
 
 	return pid;
-	// return thread_create (name,
-	//		PRI_DEFAULT, __do_fork, thread_current ());
-	
 }
 
 //child list에서 찾는 프로세스를 검색하는 함수
@@ -211,7 +215,7 @@ __do_fork (void *aux) {
 // 			file_deny_write (nfile);
 // 	}
 // 	return nfile;
-// } 이 함수를 활용
+// } 이 함수를 활용 
 
 
 	for(int i = 0; i < FDT_COUNT_LIMIT; i++)
@@ -226,14 +230,15 @@ __do_fork (void *aux) {
 	current->next_fd = parent->next_fd;
 
 	// 부모가 기다렸다가 해제
-	// sema_up(&current->load_sema);
+	sema_up(&current->load_sema);
 	process_init ();
 
 	/* Finally, switch to the newly created process. */
 	if (succ)
 		do_iret (&if_);
 error:
-	thread_exit ();
+	sema_up(&current->load_sema);
+	exit(-2);
 }
 
 /* Switch the current execution context to the f_name.
@@ -270,7 +275,6 @@ process_exec (void *f_name) {
 	_if.R.rdi = count;
 	_if.R.rsi = (char*)_if.rsp + 8;
 
-	// hex_dump(_if.rsp, _if.rsp, USER_STACK-(uint64_t)_if.rsp, true);
 
 
 	/* If load failed, quit. */
@@ -343,20 +347,19 @@ struct file*process_get_file(int fd)
 	struct file**fdt = curr->fdt;
 	//fd 디폴트가 2이고 떄문에 그것보다 작거나 리미트 값 이상이 될 시에 
 	//NULL을 리턴해야한다. 
-	if(fd < 2 || fd >= FDT_COUNT_LIMIT)
-	{
+	if(fd < 0 || fd >= FDT_COUNT_LIMIT)
 		return NULL;
-	}
+	
 	return fdt[fd];
 
 }
 
 //디스크립터 내에서 close할때 필요한 함수도 만들어주기
-struct file*process_close(int fd)
+void process_close_file(int fd)
 {
 	struct thread*curr = thread_current();
 	struct file**fdt = curr->fdt;
-	if(fd < 2 || fd >= FDT_COUNT_LIMIT)
+	if(fd < 0 || fd >= FDT_COUNT_LIMIT)
 	{
 		return NULL;
 	}
@@ -380,11 +383,11 @@ process_wait (tid_t child_tid UNUSED) {
 	struct thread *child = get_child_process(child_tid);
 	if(child==NULL)
 		return -1;
-	// sema_down(&child->wait_sema);
-	timer_sleep(10);
+	sema_down(&child->wait_sema);
+	// timer_sleep(10);
 
 	list_remove(&child->child_elem);
-
+	sema_up(&child->exit_sema);
 	return child->exit_status;
 }
 
@@ -399,17 +402,17 @@ process_exit (void) {
 	/*모든 파일 닫고 메모리 리턴
 	  현재 running 중인 파일도 닫기*/
 	
-	// for(int i = 2; i < FDT_COUNT_LIMIT; i++)
-	// 	close(i);
-	// palloc_free_page(curr->fdt);
+	for(int i = 2; i < FDT_COUNT_LIMIT; i++)
+		close(i);
+	palloc_free_page(curr->fdt);
 	// //위에 bool load에서 닫던거 여기서 닫게 해야함. 
-	// file_close(curr->running);
+	file_close(curr->running);
 	
 	process_cleanup ();
 
-	// sema_up(&curr->wait_sema);
+	sema_up(&curr->wait_sema);
 
-	// sema_down(&curr->exit_sema);
+	sema_down(&curr->exit_sema);
 }
 
 /* Free the current process's resources. */

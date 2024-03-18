@@ -5,8 +5,15 @@
 #include "threads/thread.h"
 #include "threads/loader.h"
 #include "userprog/gdt.h"
+#include "userprog/process.h"
 #include "threads/flags.h"
+#include "filesys/filesys.h"
+#include "filesys/file.h"
 #include "intrinsic.h"
+#include "threads/synch.h"
+#include "devices/input.h"
+#include "lib/kernel/stdio.h"
+#include "threads/palloc.h"
 
 
 void syscall_entry (void);
@@ -18,7 +25,7 @@ void syscall_handler (struct intr_frame *);
 void check_address(void *addr);
 void halt(void);
 void exit(int status);
-// tid_t fork(const char*thread_name, struct intr_frame*f);
+tid_t fork(const char*thread_name, struct intr_frame*f);
 int exec(const char *command_line);
 int wait(int pid);
 bool create(const char *file, unsigned inital_size);
@@ -29,7 +36,7 @@ int read(int fd, void *buffer, unsigned size);
 int write(int fd, const void *buffer, unsigned size);
 void seek(int fd, unsigned position);
 unsigned tell(int fd);
-//void close (int fd);
+void close (int fd);
 
 
 /* System call.
@@ -87,15 +94,15 @@ syscall_handler (struct intr_frame *f UNUSED) {
 	case SYS_EXIT:
 		exit(f->R.rdi);
 		break;
-	// case SYS_FORK:
-	// 	f->R.rax = fork(f->R.rdi, f);
-	// 	break;
+	case SYS_FORK:
+		f->R.rax = fork(f->R.rdi, f);
+		break;
 	case SYS_EXEC:
 		f->R.rax = exec(f->R.rdi);
 		break;
-	// case SYS_WAIT:
-	// 	f->R.rax = wait(f->R.rdi);
-	// 	break;
+	case SYS_WAIT:
+		f->R.rax = wait(f->R.rdi);
+		break;
 	case SYS_CREATE:
 		f->R.rax = create(f->R.rdi, f->R.rsi);
 		break;
@@ -120,9 +127,9 @@ syscall_handler (struct intr_frame *f UNUSED) {
 	case SYS_TELL:
 		f->R.rax = tell(f->R.rdi);
 		break;
-	// case SYS_CLOSE:
-	// 	close(f->R.rdi);
-	// 	break;
+	case SYS_CLOSE:
+		close(f->R.rdi);
+		break;
 	}
 
 }
@@ -157,10 +164,10 @@ void exit(int status)
 	thread_exit();
 }
 
-// tid_t fork(const char*thread_name, struct intr_frame*f)
-// {
-// 	return process_fork(thread_name, f);
-// }
+tid_t fork(const char*thread_name, struct intr_frame*f)
+{
+	return process_fork(thread_name, f);
+}
 
 /*exec 함수에서는 전달받은 인자를 그냥 받지 않는데 
 그 이유는 인자를 파싱하는 과정이 있기 때문에 복사본을 
@@ -182,10 +189,10 @@ int exec(const char *command_line)
 		{exit(-1);}
 }
 
-// int wait(int pid)
-// {
-// 	return process_wait(pid);
-// }
+int wait(int pid)
+{
+	return process_wait(pid);
+}
 
 bool create(const char *file, unsigned inital_size)
 {
@@ -252,6 +259,8 @@ int write(int fd, const void *buffer, unsigned size)
 
 void seek(int fd, unsigned position)
 {
+	if(fd>2)
+		return;
 	struct file *file = process_get_file(fd);
 	if (file == NULL)
 		{return;}
@@ -260,20 +269,22 @@ void seek(int fd, unsigned position)
 
 unsigned tell(int fd)
 {
+	if(fd>2)
+		return;
 	struct file *file = process_get_file(fd);
 	if(file == NULL)
 		{return;}
 	return file_tell(file);
 }
 
-// void close(int fd)
-// {
-// 	struct file *file = process_get_file(fd);
-// 	if (file == NULL)
-// 		return;
-// 	file_close(file);
-// 	process_close_file(fd);
-// }
+void close(int fd)
+{
+	struct file *file = process_get_file(fd);
+	if (file == NULL)
+		return;
+	file_close(file);
+	process_close_file(fd);
+}
 
 int read(int fd, void *buffer, unsigned size)
 {
@@ -287,26 +298,22 @@ int read(int fd, void *buffer, unsigned size)
 	{
 		for (int i = 0; i < size; i++)
 		{
-			*ptr++ = input_getc();
+			char ch = input_getc();
+			if (ch == '\n')
+				break;
+			*ptr = ch;
+			ptr++;
 			bytes_read++;
 		}
-		lock_release(&filesys_lock);
 	}
 	else
 	{
 		if (fd < 2)
-		{
-
-			lock_release(&filesys_lock);
 			return -1;
-		}
 		struct file *file = process_get_file(fd);
 		if (file == NULL)
-		{
-
-			lock_release(&filesys_lock);
 			return -1;
-		}
+		lock_acquire(&filesys_lock);
 		bytes_read = file_read(file, buffer, size);
 		lock_release(&filesys_lock);
 	}

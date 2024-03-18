@@ -11,6 +11,7 @@
 #include "threads/synch.h"
 #include "threads/vaddr.h"
 #include "intrinsic.h"
+#include "threads/thread.h"
 #ifdef USERPROG
 #include "userprog/process.h"
 #endif
@@ -250,7 +251,7 @@ tid_t thread_create (const char *name, int priority, thread_func *function, void
 	list_push_back(&thread_current()->child_list, &t->child_elem);
 
 	//file descripter table을 thread에 추가해준다. 
-	t->fdt = palloc_get_multiple(PAL_ZERO, FDT_PAGES);
+	t->fdt = palloc_get_page(PAL_ZERO);
 	if(t->fdt == NULL)
 		{return TID_ERROR;}
 
@@ -763,13 +764,14 @@ init_thread (struct thread *t, const char *name, int priority) {
 	//[시스템콜]
 	
 	//페이지 테이블 초기화
+	t->exit_status = 0;
 	t->next_fd = 2;
+
+	sema_init(&t->load_sema, 0);
+	sema_init(&t->exit_sema, 0);
+	sema_init(&t->wait_sema, 0);
 	//child_list 초기화
 	list_init(&(t->child_list));
-
-	// sema_init(&t->load_sema, 0);
-	// sema_init(&t->exit_sema, 0);
-	// sema_init(&t->wait_sema, 0);
 	// ********************************************** //
 }
 
