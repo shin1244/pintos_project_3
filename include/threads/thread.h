@@ -43,7 +43,21 @@ typedef int tid_t;
 #define FDT_COUNT_LIMIT 128
 
 //**//
-
+void check_address(void *addr);
+void halt(void);
+void exit(int status);
+// tid_t fork(const char*thread_name, struct intr_frame*f);
+int exec(const char *command_line);
+// int wait(int pid);
+bool create(const char *file, unsigned inital_size);
+bool remove(const char *file);
+int open(const char *file_name);
+int filesize(int fd);
+int read(int fd, void *buffer, unsigned size);
+int write(int fd, const void *buffer, unsigned size);
+void seek(int fd, unsigned position);
+unsigned tell(int fd);
+void close (int fd);
 
 /* A kernel thread or user process.
  *
@@ -112,6 +126,8 @@ struct thread {
 	// ********************************************** //
 	// [MOD; SLEEP-WAIT IMPL]
 	int64_t awake_ticks;
+	/* Shared between thread.c and synch.c. */
+	struct list_elem elem;              /* List element. */
 	// [MOD; DONATION PRIORITY IMPL]
 	int original_priority;
 	struct lock *wait_lock;
@@ -122,14 +138,26 @@ struct thread {
 	int recent_cpu;
 	struct list_elem all_elem;
 
-	//[mode; syscall]
+	//[MOD; syscall]
 	// ********************************************** //
 	int exit_status;
 	struct file**fdt;
 	int next_fd;
 
-	/* Shared between thread.c and synch.c. */
-	struct list_elem elem;              /* List element. */
+	struct intr_frame parent_if;
+
+	//자식 list와 elem추가
+	struct list child_list;
+	struct list_elem child_elem;
+	//load_sema 추가 thread가 ready_list에 들어갔고 __do_fork 가 call 되면 load가 되는데 
+	//부모가 대기를 해야한다.
+
+	// struct semaphore load_sema;
+	// struct semaphore exit_sema;
+	// struct semaphore wait_sema;
+
+	struct file *running; //실행중인 파일을 저장
+
 
 #ifdef USERPROG
 	/* Owned by userprog/process.c. */
