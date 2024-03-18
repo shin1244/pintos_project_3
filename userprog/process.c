@@ -225,7 +225,7 @@ __do_fork (void *aux) {
 	}
 	current->next_fd = parent->next_fd;
 
-	//부모가 기다렸다가 해제
+	// 부모가 기다렸다가 해제
 	// sema_up(&current->load_sema);
 	process_init ();
 

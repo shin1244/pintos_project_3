@@ -29,7 +29,7 @@ int read(int fd, void *buffer, unsigned size);
 int write(int fd, const void *buffer, unsigned size);
 void seek(int fd, unsigned position);
 unsigned tell(int fd);
-// void close (int fd);
+//void close (int fd);
 
 
 /* System call.
@@ -122,12 +122,6 @@ syscall_handler (struct intr_frame *f UNUSED) {
 		break;
 	// case SYS_CLOSE:
 	// 	close(f->R.rdi);
-	// 	break;
-	// case SYS_MMAP:
-	// 	f->R.rax = mmap(f->R.rdi, f->R.rsi, f->R.rdx, f->R.r10, f->R.r8);
-	// 	break;
-	// case SYS_MUNMAP:
-	// 	munmap(f->R.rdi);
 	// 	break;
 	}
 
