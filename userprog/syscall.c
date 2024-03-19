@@ -129,7 +129,7 @@ syscall_handler (struct intr_frame *f UNUSED) {
 		break;
 	case SYS_CLOSE:
 		close(f->R.rdi);
-		break;
+		
 	}
 
 }
@@ -298,7 +298,7 @@ int read(int fd, void *buffer, unsigned size)
 	char *ptr = (char *)buffer;
 	int bytes_read = 0;
 
-	lock_acquire(&filesys_lock);
+	// lock_acquire(&filesys_lock);
 	if (fd == STDIN_FILENO)
 	{
 		for (int i = 0; i < size; i++)

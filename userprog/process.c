@@ -345,11 +345,11 @@ int process_add_file(struct file *f)
 //디스크립터 내에서 검색할 수 있게 해주는 함수
 struct file*process_get_file(int fd)
 {
-	struct thread*curr = thread_current();
-	struct file**fdt = curr->fdt;
 	//fd 디폴트가 2이고 떄문에 그것보다 작거나 리미트 값 이상이 될 시에 
 	//NULL을 리턴해야한다. 
-	if(fd < 0 || fd >= FDT_COUNT_LIMIT)
+	struct thread*curr = thread_current();
+	struct file**fdt = curr->fdt;
+	if(fd < 0 || fd > FDT_COUNT_LIMIT)
 		return NULL;
 	
 	return fdt[fd];
