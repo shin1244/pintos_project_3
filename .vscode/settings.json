@@ -9,6 +9,7 @@
         "loader.h": "c",
         "*.inc": "c",
         "synch.h": "c",
-        "intq.h": "c"
+        "intq.h": "c",
+        "string.h": "c"
     }
 }

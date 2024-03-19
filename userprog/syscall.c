@@ -213,11 +213,14 @@ int open(const char *file_name)
 {
 	check_address(file_name);
 	struct file *file = filesys_open(file_name);
+
 	if (file == NULL)
 		return -1;
+
 	int fd = process_add_file(file);
 	if (fd == -1)
 		file_close(file);
+
 	return fd;
 }
 

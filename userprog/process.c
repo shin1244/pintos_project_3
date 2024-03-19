@@ -97,6 +97,7 @@ process_fork (const char *name, struct intr_frame *if_ UNUSED) {
 	//부모 대기
 	sema_down (&child->load_sema);
 
+	//예외케이스이라서 -2로 설정했음. 일반적인 종료가 아니기 때문
 	if(child->exit_status == -2)
 	{
 		sema_up(&child->exit_sema);
@@ -331,14 +332,13 @@ int process_add_file(struct file *f)
 
 	//탐색을 계속해서 시작
 	while(curr->next_fd<FDT_COUNT_LIMIT&&fdt[curr->next_fd])
-	{
 		curr->next_fd++;
-		if(curr->next_fd >= FDT_COUNT_LIMIT)
+		if(curr->next_fd == FDT_COUNT_LIMIT)
 			return -1;
 		fdt[curr->next_fd] = f;
 
 		return curr->next_fd;
-	}	
+	
 }
 
 
