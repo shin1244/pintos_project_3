@@ -385,7 +385,7 @@ process_wait (tid_t child_tid UNUSED) {
 	struct thread *child = get_child_process(child_tid);
 	if(child==NULL)
 		return -1;
-	sema_down(&child->wait_sema);
+	sema_down (&child->wait_sema);
 
 	list_remove(&child->child_elem);
 	sema_up(&child->exit_sema);
