@@ -2,6 +2,14 @@
     "files.associations": {
         "inttypes.h": "c",
         "stdio.h": "c",
-        "interrupt.h": "c"
+        "interrupt.h": "c",
+        "intrinsic.h": "c",
+        "process.h": "c",
+        "vm.h": "c",
+        "loader.h": "c",
+        "*.inc": "c",
+        "synch.h": "c",
+        "intq.h": "c",
+        "string.h": "c"
     }
 }

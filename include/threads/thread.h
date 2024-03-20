@@ -5,6 +5,7 @@
 #include <list.h>
 #include <stdint.h>
 #include "threads/interrupt.h"
+#include "threads/synch.h"
 #ifdef VM
 #include "vm/vm.h"
 #endif
@@ -36,6 +37,28 @@ typedef int tid_t;
 #define RECENT_CPU_DEFAULT	0
 #define LOAD_AVG_DEFAULT	0
 // ********************************************** //
+
+//**//
+//file disripter
+// #define FDT_PAGES 2
+#define FDT_COUNT_LIMIT 128
+
+//**//
+void check_address(void *addr);
+void halt(void);
+void exit(int status);
+// tid_t fork(const char*thread_name, struct intr_frame*f);
+int exec(const char *command_line);
+// int wait(int pid);
+bool create(const char *file, unsigned inital_size);
+bool remove(const char *file);
+int open(const char *file_name);
+int filesize(int fd);
+int read(int fd, void *buffer, unsigned size);
+int write(int fd, const void *buffer, unsigned size);
+void seek(int fd, unsigned position);
+unsigned tell(int fd);
+void close (int fd);
 
 /* A kernel thread or user process.
  *
@@ -104,6 +127,8 @@ struct thread {
 	// ********************************************** //
 	// [MOD; SLEEP-WAIT IMPL]
 	int64_t awake_ticks;
+	/* Shared between thread.c and synch.c. */
+	struct list_elem elem;              /* List element. */
 	// [MOD; DONATION PRIORITY IMPL]
 	int original_priority;
 	struct lock *wait_lock;
@@ -113,10 +138,26 @@ struct thread {
 	int nice;
 	int recent_cpu;
 	struct list_elem all_elem;
-	// ********************************************** //
 
-	/* Shared between thread.c and synch.c. */
-	struct list_elem elem;              /* List element. */
+	//[MOD; syscall]
+	// ********************************************** //
+	int exit_status; //1을 제외한 나머지는 
+	struct file**fdt;
+	int next_fd;
+
+
+	struct intr_frame parent_if;
+	//자식 list와 elem추가
+	struct list child_list;
+	struct list_elem child_elem;
+
+
+	struct semaphore load_sema; // 현재 스레드가 load되는 동안 부모가 기다리게 하기 위한 semaphore
+	struct semaphore exit_sema;
+	struct semaphore wait_sema;
+
+	struct file *running; //실행중인 파일을 저장
+
 
 #ifdef USERPROG
 	/* Owned by userprog/process.c. */
