@@ -549,9 +549,6 @@ __printf (const char *format,
    starting at OFS for the first byte in BUF.  If ASCII is true
    then the corresponding ASCII characters are also rendered
    alongside. */
-   /*주어진 버퍼를 16진수로 덤프하는 함수 16진수 및 해당 값의 아스키 문자가 포함
-   16바이트 단위로 덤프하고 각 덤프 라인마다 해당 바이트의 16진수와 ascii문자 표현을
-   할지 bool로 인자를 받음. */
 void
 hex_dump (uintptr_t ofs, const void *buf_, size_t size, bool ascii) {
 	const uint8_t *buf = buf_;

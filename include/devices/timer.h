@@ -7,6 +7,7 @@
 /* Number of timer interrupts per second. */
 #define TIMER_FREQ 100
 
+int load_avg;
 void timer_init (void);
 void timer_calibrate (void);
 

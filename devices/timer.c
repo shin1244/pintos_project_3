@@ -7,6 +7,7 @@
 #include "threads/io.h"
 #include "threads/synch.h"
 #include "threads/thread.h"
+#include "threads/fixed-point.h"
 
 /* See [8254] for hardware details of the 8254 timer chip. */
 
@@ -54,7 +55,7 @@ timer_calibrate (void) {
 	printf ("Calibrating timer...  ");
 
 	/* Approximate loops_per_tick as the largest power-of-two
-	   still less than one timer tick. */
+	   still less than one t imer tick. */
 	loops_per_tick = 1u << 10;
 	while (!too_many_loops (loops_per_tick << 1)) {
 		loops_per_tick <<= 1;
@@ -72,7 +73,7 @@ timer_calibrate (void) {
 
 /* Returns the number of timer ticks since the OS booted. */
 int64_t
-timer_ticks (void) {
+timer_ticks (void) { //Global ticks
 	enum intr_level old_level = intr_disable ();
 	int64_t t = ticks;
 	intr_set_level (old_level);
@@ -90,19 +91,15 @@ timer_elapsed (int64_t then) {
 /* Suspends execution for approximately TICKS timer ticks. */
 void
 timer_sleep (int64_t ticks) {
-	int64_t start = timer_ticks ();
-	ASSERT (intr_get_level () == INTR_ON);	
+	/* fix start*/
+	// int64_t start = timer_ticks ();//return the value of the current tick
 
-	// ********************************************** //
-	// [MOD; SLEEP-WAIT IMPL]
-	// DESCRIPTION call thread_sleep if timer_sleep is called in order to
-	// put the current thread to BLOCK state and update sleep list
-	thread_sleep(start + ticks);
-	// ********************************************** //
+	ASSERT (intr_get_level () == INTR_ON);
 	
-	// [LEGACY] BUSY-WAIT POLICY
-	// while (timer_elapsed (start) < ticks)
-	// 	thread_yield ();
+		thread_sleep(timer_ticks () + ticks);
+
+	// while (timer_elapsed (start) < ticks)//timer_elapse:return the value of the current tick
+	// 	thread_yield (); // yield the cpu and insert thread to ready_list
 }
 
 /* Suspends execution for approximately MS milliseconds. */
@@ -128,42 +125,35 @@ void
 timer_print_stats (void) {
 	printf ("Timer: %"PRId64" ticks\n", timer_ticks ());
 }
-
 
-/* Timer interrupt handler. */
+ /* Timer interrupt handler. */
+ 
+/*At every tick, check whether some thread must wake up from
+ sleep queue and call wake up function*/
 static void
-timer_interrupt (struct intr_frame *args UNUSED) {
-	ticks++; // updates global tick
-	thread_tick ();
+timer_interrupt(struct intr_frame *args UNUSED) {
+    ticks++;
+    thread_tick(); // 현재 실행 중인 프로세스의 CPU 사용 시간을 업데이트
 
-	// ********************************************** //
-	// [MOD; MLFQS IMPL]
-	// DESCRIPTION every tick, 4 ticks, 1 seconds mlfqs must
-	// update values accordingly (see gitbook for clarification)
-	if(thread_mlfqs) {
-		if(ticks % TIMER_FREQ == 0) {
-			thread_mlfqs_calculate_load_avg();
-			thread_mlfqs_calculate_recent_cpu();
-		}
-
-		if(ticks % 4 == 0)
-			thread_mlfqs_calculate_priority();
-		
-		thread_mlfqs_increment_recent_cpu();
-	} else {
-		// [MOD; PREEMPTION PRIORITY IMPL]
-		// DESCRIPTION check the current running thread priority and ready list
-		// thread priority and swap if necessary
-		thread_preemption_priority();
-		// ********************************************** //
+	/* code to add:
+		check sleep list and the global tick.
+		find any threads to wake up,
+		move them to the ready list if necessary.
+		update the global tick.
+	*/
+	if (thread_mlfqs){
+		increment_recent_cpu();
+		if (timer_ticks() % TIMER_FREQ == 0)//1초마다
+			{
+				calculate_load_avg();
+				recalculate_recent_cpu();
+			}
+		if (timer_ticks() % 4 == 0) //4틱마다
+		 	recalculate_priority();
 	}
-	// [MOD; SLEEP-WAIT IMPL]
-	// DESCRIPTION call thread_awake every interrupt to check any thread
-	// that needs to be woken
-	thread_awake(ticks);
-	// ********************************************** //
+	thread_wakeup(ticks); 
 }
-
+	
 /* Returns true if LOOPS iterations waits for more than one timer
    tick, otherwise false. */
 static bool
