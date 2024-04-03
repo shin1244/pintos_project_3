@@ -2,7 +2,7 @@
 #define VM_VM_H
 #include <stdbool.h>
 #include "threads/palloc.h"
-
+#include "hash.h"
 enum vm_type {
 	/* page not initialized */
 	VM_UNINIT = 0,
@@ -17,8 +17,8 @@ enum vm_type {
 
 	/* Auxillary bit flag marker for store information. You can add more
 	 * markers, until the value is fit in the int. */
-	VM_MARKER_0 = (1 << 3),
-	VM_MARKER_1 = (1 << 4),
+	VM_MARKER_0 = (1 << 3), // 8
+	VM_MARKER_1 = (1 << 4), // 16
 
 	/* DO NOT EXCEED THIS VALUE. */
 	VM_MARKER_END = (1 << 31),
@@ -46,7 +46,11 @@ struct page {
 	struct frame *frame;   /* Back reference for frame */
 
 	/* Your implementation */
-
+	struct hash_elem hash_elem; /* Hash table element */ /* key = page->va, value = struct page */
+	// void *addr; /* virtual address */
+	/* ... other members */
+	bool writable;
+	int mmap_cnt;
 	/* Per-type data are binded into the union.
 	 * Each function automatically detects the current union */
 	union {
@@ -63,6 +67,14 @@ struct page {
 struct frame {
 	void *kva;
 	struct page *page;
+	struct list_elem frame_elem;
+};
+
+struct slot
+{
+	struct page *page;
+	uint32_t slot_no;
+	struct list_elem swap_elem;
 };
 
 /* The function table for page operations.
@@ -85,6 +97,7 @@ struct page_operations {
  * We don't want to force you to obey any specific design for this struct.
  * All designs up to you for this. */
 struct supplemental_page_table {
+	struct hash spt_hash;
 };
 
 #include "threads/thread.h"
@@ -109,4 +122,21 @@ void vm_dealloc_page (struct page *page);
 bool vm_claim_page (void *va);
 enum vm_type page_get_type (struct page *page);
 
+unsigned page_hash (const struct hash_elem *p_, void *aux UNUSED);
+bool page_less (const struct hash_elem *a_, const struct hash_elem *b_, void *aux UNUSED);
+struct page *page_lookup (const void *address);
+
+struct lazy_load_info
+{
+    struct file *file;
+    off_t offset;
+    uint32_t read_bytes;
+    uint32_t zero_bytes;
+	bool writable;
+};
+
+struct list swap_table;
+struct list frame_table;
+struct lock swap_table_lock;
+struct lock frame_table_lock;
 #endif  /* VM_VM_H */
